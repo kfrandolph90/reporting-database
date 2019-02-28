@@ -8,7 +8,7 @@ import csv
 import io
 import os
 import logging
-from datetime import date, timedelta
+from datetime import datetime, date, timedelta
 import time
 
 from oauth2client import client
@@ -229,6 +229,61 @@ def build_report(name,filename,campaign_id,floodlight_id=None):
 
     return report
 
+def build_rf_report(name,advertiser_id,campaign_id):
+
+    report = {
+            'name': name + "_RF",
+            'type': 'REACH',
+            'fileName': str(campaign_id) + '_RF_AUTO',
+            'format': 'CSV'
+            }
+
+    reachCriteria = {
+            'dateRange':    {
+                            "kind": "dfareporting#dateRange",
+                            "relativeDateRange": 'LAST_30_DAYS'
+                            },
+            'dimensions':   [{
+                            "kind": "dfareporting#sortedDimension",
+                            "name": "dfa:advertiser"
+                            },
+                            {
+                            "kind": "dfareporting#sortedDimension",
+                            "name": "dfa:country"
+                            },
+                            {
+                            "kind": "dfareporting#sortedDimension",
+                            "name": "dfa:campaign"
+                            }],
+            "metricNames": [
+                           "dfa:uniqueReachTotalReach",
+                           "dfa:uniqueReachAverageImpressionFrequency"
+                            ],
+            "dimensionFilters": [
+                               {
+                                "kind": "dfareporting#dimensionValue",
+                                "dimensionName": "dfa:campaign",
+                                "id": str(campaign_id),
+                                "matchType": "EXACT"
+                               },
+                               {
+                                "kind": "dfareporting#dimensionValue",
+                                "dimensionName": "dfa:country",
+                                "id": "256",
+                                "matchType": "EXACT"
+                               },
+                               {
+                                "kind": "dfareporting#dimensionValue",
+                                "dimensionName": "dfa:advertiser",
+                                "id": str(advertiser_id),
+                                "matchType": "EXACT"
+                                }]
+            }
+
+    report['reachCriteria'] = reachCriteria
+
+    return report
+
 def insert_report(service,profile_id,report):
     inserted_report = service.reports().insert(
                 profileId=profile_id, body=report).execute()
@@ -305,5 +360,24 @@ def process_csv(filepath):
             elif 'Grand Total:' in line:
                 break
             elif write == True:
+                data.append(tuple(map(fixtype,line)))
+    return data
+
+def process_rf_csv(filepath):
+    data = []   
+    with open(filepath) as f:
+        reader = csv.reader(f)      
+        write = False        
+        for line in reader:
+            if 'Date Range' in line:
+                range = line[1]
+                endDate = datetime.strptime(range[range.find('-')+2:],'%m/%d/%y')
+                endDate = str(endDate.date())
+            elif 'Advertiser' in line and 'Country' in line:
+                write = True
+            elif 'Grand Total:' in line:
+                break
+            elif write == True:
+                line = [endDate] + [line[0]] + line[2:]
                 data.append(tuple(map(fixtype,line)))
     return data

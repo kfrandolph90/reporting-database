@@ -70,6 +70,12 @@ class dbConnection:
                         "WHERE id = %s "
                         )
 
+    update_rf_report_id = (
+                          "UPDATE campaigns "
+                          "SET rfReportId = %s "
+                          "WHERE id = %s "
+                          )
+
     insert_report = ("INSERT INTO dcm_measures "
                     "(`advertiserId`,`campaignId`,`placementId`,`creativeId`,"
                     "`adId`,`date`,`impressions`,`clicks`,"
@@ -81,6 +87,11 @@ class dbConnection:
                     "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
                     "ON DUPLICATE KEY UPDATE `impressions` = `impressions`"
                     )
+
+    insert_rf_report = ("INSERT INTO dcm_reach "
+                        "(`date`,`advertiser`,`campaign`,`totalReach`,`averageFrequency`)"
+                        "VALUES (%s,%s,%s,%s,%s) "
+                        "ON DUPLICATE KEY UPDATE `totalReach` = `totalReach`")
 
     insert_moat_display = ("INSERT INTO moat_display "
                             "(`active_in_view_time`,`date`,"
@@ -229,9 +240,17 @@ class dbConnection:
         logger.info('Writing Report ID')
         return self.execute(self.update_report_id,(report_id,campaign_id))
 
+    def write_rf_report_id(self,report_id,campaign_id):
+        logger.info('Writing Reach Report ID')
+        return self.execute(self.update_rf_report_id,(report_id,campaign_id))
+
     def write_report(self,report):
         logger.info('Writing Report')
         return self.insertmany(self.insert_report,report)
+
+    def write_rf_report(self,report):
+        logger.info('Writing Reach Report')
+        return self.insertmany(self.insert_rf_report,report)
 
     def write_moat_display(self,data):
         logger.info('Writing Moat Display')
