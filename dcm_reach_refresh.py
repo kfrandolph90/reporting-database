@@ -9,9 +9,9 @@ import time
 from datetime import datetime
 from oauth2client import client
 
-import dcm_helper_copy
+import dcm_helper
 import dfareporting_utils
-from db_helper_copy import dbConnection
+from db_helper import dbConnection
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("__name__")
@@ -81,14 +81,14 @@ def main():
 
         if rf_report_id == None:
             logger.info("Building Reach Report for {}".format(name))
-            report = dcm_helper_copy.build_rf_report(name,advertiser_id,campaign_id)
-            rf_report_id = dcm_helper_copy.insert_report(service,PROFILE_ID,report)
+            report = dcm_helper.build_rf_report(name,advertiser_id,campaign_id)
+            rf_report_id = dcm_helper.insert_report(service,PROFILE_ID,report)
             resp = db.write_rf_report_id(rf_report_id,campaign_id)
             logger.debug(resp)
 
         try:
             logger.info("Running Reach Report {} for {}".format(rf_report_id,name))
-            file_id = dcm_helper_copy.run_report(service,PROFILE_ID,rf_report_id)
+            file_id = dcm_helper.run_report(service,PROFILE_ID,rf_report_id)
             reports[rf_report_id] = file_id
             time.sleep(2)
         except:
@@ -98,7 +98,7 @@ def main():
     #download loop
     for report_id,file_id in reports.items():
         logger.info("Downloading File {} for Report {}".format(report_id,file_id))
-        dcm_helper_copy.download_file(service,report_id,file_id)   
+        dcm_helper.download_file(service,report_id,file_id)   
 
     
     export_directory = 'exports'
@@ -109,7 +109,7 @@ def main():
         else:
             path = export_directory + '/' +  export
 
-        processed = dcm_helper_copy.process_rf_csv(path)
+        processed = dcm_helper.process_rf_csv(path)
         logger.debug(processed)
         if processed != []:
             rows = db.write_rf_report(processed)
