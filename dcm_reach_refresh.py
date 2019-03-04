@@ -6,7 +6,7 @@ import platform
 import sys
 import time
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from oauth2client import client
 
 import dcm_helper
@@ -20,7 +20,8 @@ logger = logging.getLogger("__name__")
 parser = argparse.ArgumentParser(description='Runs DCM Reach GUI Report and writes to database')
 parser.add_argument('-t','--test', help='send to local db',action='store_true')
 parser.add_argument('-m','--manual', help='choose campaign to refresh',action='store_true')
-parser.add_argument('-p','--prof_id', help='dcm profile id',required=True) ## add 
+parser.add_argument('-p','--prof_id', help='dcm profile id',required=True) ## add
+parser.add_argument('-b','--backfill', help='choose date to start backfill in format: YYYY-mm-dd') 
 
 
 args = parser.parse_args()
@@ -71,6 +72,16 @@ def main():
         except:
             print('nah')
             exit()
+
+    # TODO: Update reports for number of days specified in backfill
+    if args.backfill:
+        backfill = args.backfill
+        firstEndDate = datetime.strptime(backfill,'%Y-%m-%d')
+        lastEndDate = datetime.today() + timedelta(days=-1)
+        delta = lastEndDate - firstEndDate
+        numDays = delta.days
+    else:
+        run = True
         
    
     for campaign in campaigns:
@@ -78,6 +89,7 @@ def main():
         campaign_id = campaign['id']
         advertiser_id = campaign['advertiserId']
         rf_report_id = campaign['rfReportId']
+        start_date = str(campaign['startDate'])
 
         if rf_report_id == None:
             logger.info("Building Reach Report for {}".format(name))
@@ -86,14 +98,29 @@ def main():
             resp = db.write_rf_report_id(rf_report_id,campaign_id)
             logger.debug(resp)
 
-        try:
-            logger.info("Running Reach Report {} for {}".format(rf_report_id,name))
-            file_id = dcm_helper.run_report(service,PROFILE_ID,rf_report_id)
-            reports[rf_report_id] = file_id
-            time.sleep(2)
-        except:
-            logger.error('Run Reach Report for {}'.format(name))
-            pass
+        days = 0    
+        while (days <= numDays) or run:
+            try:
+                end_date = str((firstEndDate + timedelta(days=days)).date())
+                print(start_date)
+                print(end_date)
+                logger.info("Updating Date in Reach Report {} for {}".format(rf_report_id,name))
+                if run:
+                    pass
+                elif days == numDays:
+                    ## if end_date is yesterday, update report to revert back to last 30 days
+                    dcm_helper.update_report_date(service,PROFILE_ID,rf_report_id,dateRange="LAST_30_DAYS")
+                else:
+                    dcm_helper.update_report_date(service,PROFILE_ID,rf_report_id,startDate=start_date,endDate=end_date)
+                logger.info("Running Reach Report {} for {}".format(rf_report_id,name))
+                file_id = dcm_helper.run_report(service,PROFILE_ID,rf_report_id)
+                reports[rf_report_id] = file_id
+                time.sleep(2)
+                run = False
+                days+=1
+            except Exception as e:
+                logger.error('Reach Report Error:\n{}'.format(e))
+                exit()
     
     #download loop
     for report_id,file_id in reports.items():

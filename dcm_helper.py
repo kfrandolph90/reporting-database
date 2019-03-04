@@ -297,7 +297,41 @@ def run_report(service,profile_id,report_id):
                                 synchronous=True).execute()
     file_id = resp['id']
 
-    return int(file_id)    
+    return int(file_id)
+
+def update_report_date(service,profile_id,report_id,startDate=None,endDate=None,dateRange=None):
+    if dateRange is not None:
+        body = {
+        "reachCriteria": {
+            "dateRange": {
+                "kind": "dfareporting#dateRange",
+                "relativeDateRange": dateRange,
+                "startDate": None,
+                "endDate": None
+            }
+        }
+    }
+    elif (startDate is not None) and (endDate is not None):
+        body = {
+            "reachCriteria": {
+                "dateRange": {
+                    "kind": "dfareporting#dateRange",
+                    "relativeDateRange": None,
+                    "startDate": startDate,
+                    "endDate": endDate
+                }
+            }
+        }
+
+    else:
+        print("No date given")
+        exit()
+
+    print(body)
+
+    resp = service.reports().patch(profileId=profile_id,
+                                    reportId=report_id,
+                                    body=body).execute()
 
 def download_file(service,report_id,file_id):     
     CHUNK_SIZE = 32 * 1024 * 1024
