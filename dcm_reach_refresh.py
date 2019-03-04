@@ -73,15 +73,12 @@ def main():
             print('nah')
             exit()
 
-    # TODO: Update reports for number of days specified in backfill
     if args.backfill:
-        backfill = args.backfill
-        firstEndDate = datetime.strptime(backfill,'%Y-%m-%d')
+        firstEndDate = datetime.strptime(args.backfill,'%Y-%m-%d')
         lastEndDate = datetime.today() + timedelta(days=-1)
-        delta = lastEndDate - firstEndDate
-        numDays = delta.days
+        numDays = (lastEndDate - firstEndDate).days
     else:
-        run = True
+        numDays = 0
         
    
     for campaign in campaigns:
@@ -98,25 +95,23 @@ def main():
             resp = db.write_rf_report_id(rf_report_id,campaign_id)
             logger.debug(resp)
 
+        
+        ## this is ugly pls halp    
         days = 0    
-        while (days <= numDays) or run:
+        while days <= numDays:
             try:
-                end_date = str((firstEndDate + timedelta(days=days)).date())
-                print(start_date)
-                print(end_date)
-                logger.info("Updating Date in Reach Report {} for {}".format(rf_report_id,name))
-                if run:
-                    pass
-                elif days == numDays:
-                    ## if end_date is yesterday, update report to revert back to last 30 days
-                    dcm_helper.update_report_date(service,PROFILE_ID,rf_report_id,dateRange="LAST_30_DAYS")
-                else:
-                    dcm_helper.update_report_date(service,PROFILE_ID,rf_report_id,startDate=start_date,endDate=end_date)
+                if args.backfill:
+                    end_date = str((firstEndDate + timedelta(days=days)).date())
+                    logger.info("Updating Date in Reach Report {} for {}".format(rf_report_id,name))
+                    if days == numDays:
+                        ## if end_date is yesterday, update report to revert back to last 30 days
+                        dcm_helper.update_report_date(service,PROFILE_ID,rf_report_id,dateRange="LAST_30_DAYS")
+                    else:
+                        dcm_helper.update_report_date(service,PROFILE_ID,rf_report_id,startDate=start_date,endDate=end_date)
                 logger.info("Running Reach Report {} for {}".format(rf_report_id,name))
                 file_id = dcm_helper.run_report(service,PROFILE_ID,rf_report_id)
                 reports[rf_report_id] = file_id
                 time.sleep(2)
-                run = False
                 days+=1
             except Exception as e:
                 logger.error('Reach Report Error:\n{}'.format(e))

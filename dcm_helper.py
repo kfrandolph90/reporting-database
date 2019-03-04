@@ -327,8 +327,6 @@ def update_report_date(service,profile_id,report_id,startDate=None,endDate=None,
         print("No date given")
         exit()
 
-    print(body)
-
     resp = service.reports().patch(profileId=profile_id,
                                     reportId=report_id,
                                     body=body).execute()
@@ -368,7 +366,7 @@ def download_file(service,report_id,file_id):
         while download_finished is False:
             _, download_finished = downloader.next_chunk()
 
-        print('File %s downloaded to %s'
+        logger.info('File %s downloaded to %s'
                 % (report_file['id'], os.path.realpath(out_file.name)))
 
     
